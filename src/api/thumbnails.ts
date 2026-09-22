@@ -5,6 +5,7 @@ import type { ApiConfig } from "../config";
 import type { BunRequest } from "bun";
 import { BadRequestError, NotFoundError, UserForbiddenError } from "./errors";
 import * as path from "path";
+import { randomBytes } from "crypto";
 
 type Thumbnail = {
   data: ArrayBuffer;
@@ -33,10 +34,10 @@ export async function handlerUploadThumbnail(cfg: ApiConfig, req: BunRequest) {
     throw new BadRequestError("File size is more than the allowed sizes");
   }
   const mediaType = file.type;
-  const fileExtension = mediaType.split("/")[1];
-  if (!fileExtension) {
-    throw new BadRequestError("Invalid file type");
+  if (mediaType !== "image/jpeg" && mediaType !== "image/png") {
+    throw new BadRequestError("Thumbnail must be a JPEG or PNG image");
   }
+  const fileExtension = mediaType.split("/")[1];
 
   const imageData: ArrayBuffer = await file.arrayBuffer();
 
@@ -48,7 +49,7 @@ export async function handlerUploadThumbnail(cfg: ApiConfig, req: BunRequest) {
     throw new UserForbiddenError("This video is uploaded by another user");
   }
 
-  const fileName = `${videoId}.${fileExtension}`;
+  const fileName = `${randomBytes(32).toString("base64url")}.${fileExtension}`;
   const filePath = path.join(cfg.assetsRoot, fileName);
   await Bun.write(filePath, imageData);
 
